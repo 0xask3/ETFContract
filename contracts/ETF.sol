@@ -9,7 +9,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 import "./IterableMapping.sol";
 
-contract IndexVault is Ownable, ERC20PresetMinterPauser {
+contract ETF is Ownable, ERC20PresetMinterPauser {
     using IterableMapping for IterableMapping.Map;
 
     IERC20 public token; //Deposit token
