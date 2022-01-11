@@ -132,13 +132,16 @@ contract IndexVault is Ownable, ERC20PresetMinterPauser {
 
         for (uint256 i = 0; i < len; i++) {
             asset = AssetsMap.getKeyAtIndex(i);
-            totalPrice += getTokenPrice(
-                asset,
-                IERC20(asset).balanceOf(address(this))
-            );
+            if (IERC20(asset).balanceOf(address(this)) > 0) {
+                totalPrice += getTokenPrice(
+                    asset,
+                    IERC20(asset).balanceOf(address(this))
+                );
+            }
         }
-
-        unitPrice = totalPrice / totalShares;
+        if (totalShares > 0) {
+            unitPrice = totalPrice / totalShares;
+        }
     }
 
     function swapTokenForAsset(address asset, uint256 tokenAmount) private {
@@ -165,6 +168,11 @@ contract IndexVault is Ownable, ERC20PresetMinterPauser {
             IERC20(asset).approve(address(router), ~uint256(0));
         }
         AssetsMap.set(asset, allocation);
+
+        if (allocation == 0) {
+            AssetsMap.remove(asset);
+        }
+
         totalAllocation = totalAllocation + allocation - oldValue;
     }
 
