@@ -159,6 +159,56 @@ contract ETF is Ownable, ERC20PresetMinterPauser {
         );
     }
 
+    function swapAssetToBNB(address asset) internal {
+        address[] memory path = new address[](2);
+        path[0] = asset;
+        path[1] = router.WETH();
+
+        router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            IERC20(asset).balanceOf(address(this)),
+            0,
+            path,
+            address(this),
+            block.timestamp + 60
+        );
+    }
+
+    function swapBNBToAsset(uint256 amount, address asset) internal {
+        address[] memory path = new address[](2);
+        path[0] = router.WETH();
+        path[1] = asset;
+
+        router.swapExactETHForTokensSupportingFeeOnTransferTokens{
+            value: amount
+        }(0, path, address(this), block.timestamp + 60);
+    }
+
+    function swapTokensToBNB() private {
+        uint256 len = AssetsMap.size();
+        address asset;
+
+        for (uint256 i = 0; i < len; i++) {
+            asset = AssetsMap.getKeyAtIndex(i);
+            if (IERC20(asset).balanceOf(address(this)) > 0) {
+                swapAssetToBNB(asset);
+            }
+        }
+    }
+
+    function swapBNBToTokens(uint256 amount) private {
+        uint256 len = AssetsMap.size();
+        address asset;
+        uint256 amountToBeSwapped;
+
+        for (uint256 i = 0; i < len; i++) {
+            asset = AssetsMap.getKeyAtIndex(i);
+            amountToBeSwapped =
+                (amount * AssetsMap.get(asset)) /
+                totalAllocation;
+            swapBNBToAsset(amountToBeSwapped, asset);
+        }
+    }
+
     function setAllocation(address asset, uint256 allocation)
         external
         onlyOwner
@@ -167,6 +217,11 @@ contract ETF is Ownable, ERC20PresetMinterPauser {
         if (oldValue == 0) {
             IERC20(asset).approve(address(router), ~uint256(0));
         }
+
+        uint256 initBalance = address(this).balance;
+        swapTokensToBNB();
+        uint256 finalBal = address(this).balance - initBalance;
+
         AssetsMap.set(asset, allocation);
 
         if (allocation == 0) {
@@ -174,6 +229,8 @@ contract ETF is Ownable, ERC20PresetMinterPauser {
         }
 
         totalAllocation = totalAllocation + allocation - oldValue;
+
+        swapBNBToTokens(finalBal);
     }
 
     function setFees(uint16 _entryFee, uint16 _exitFee) external onlyOwner {
